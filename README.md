@@ -16,7 +16,7 @@ A .NET 10 MCP server that lets ChatGPT display a color card inline in the chat. 
 
 - [Docker](https://docs.docker.com/get-docker/) with Compose
 - A free [ngrok](https://ngrok.com) account and authtoken
-- ChatGPT Plus/Pro account (required for Connectors)
+- A ChatGPT account — no Plus/Pro required; enable [Developer Mode](https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt-beta) to access Connectors
 
 ## Setup
 
@@ -50,6 +50,8 @@ docker compose down           # stop and remove containers
 ```
 
 ## ChatGPT Connector setup
+
+> Developer Mode must be enabled first — see [Developer mode and MCP apps in ChatGPT](https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt-beta).
 
 1. Go to [chatgpt.com](https://chatgpt.com) → **Settings** → **Connectors** → **Create**
 2. **Server URL**: the `MCP ENDPOINT` URL printed by `start.sh`

@@ -13,7 +13,7 @@ docker compose up --build -d
 echo "Waiting for ngrok tunnel..."
 for i in {1..30}; do
   URL=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null \
-    | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['tunnels'][0]['public_url'])" 2>/dev/null)
+    | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['tunnels'][0]['public_url'])" 2>/dev/null) || true
   if [ -n "$URL" ]; then break; fi
   sleep 1
 done
