@@ -1,0 +1,25 @@
+services:
+  mcp-server:
+    build: .
+    environment:
+      ASPNETCORE_URLS: http://+:5000
+    networks:
+      - mcp-net
+    restart: unless-stopped
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    command: http mcp-server:5000
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"
+    networks:
+      - mcp-net
+    depends_on:
+      - mcp-server
+    restart: unless-stopped
+
+networks:
+  mcp-net:
+    driver: bridge
