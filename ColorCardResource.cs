@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Text.Json.Nodes;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace ColorPickerApp;
@@ -11,5 +13,21 @@ public static class ColorCardResource
         Name = "Color Card Widget",
         MimeType = "text/html;profile=mcp-app")]
     [Description("Renders a colored card with a square swatch and the color name")]
-    public static string GetColorCard() => ColorCardHtml.Content;
+    public static TextResourceContents GetColorCard() => new()
+    {
+        Uri = "ui://color-card",
+        MimeType = "text/html;profile=mcp-app",
+        Text = ColorCardHtml.Content,
+        Meta = new JsonObject
+        {
+            ["ui"] = new JsonObject
+            {
+                ["csp"] = new JsonObject
+                {
+                    ["connectDomains"] = new JsonArray(),
+                    ["resourceDomains"] = new JsonArray()
+                }
+            }
+        }
+    };
 }

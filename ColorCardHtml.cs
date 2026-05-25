@@ -61,7 +61,7 @@ public static class ColorCardHtml
             <div class="label" id="label">—</div>
           </div>
           <div id="debug-log"></div>
-          <script>
+          <script type="module">
             const dbg = document.getElementById('debug-log');
             function log(msg, obj) {
               const ts = new Date().toISOString().slice(11, 23);
