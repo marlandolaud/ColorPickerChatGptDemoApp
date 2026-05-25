@@ -14,7 +14,7 @@ builder.Services.AddHttpLogging(logging =>
 
 builder.Services
     .AddMcpServer()
-    .WithHttpTransport()
+    .WithHttpTransport(o => o.Stateless = true)
     .WithToolsFromAssembly()
     .WithResourcesFromAssembly();
 
