@@ -25,14 +25,46 @@ fi
 
 echo ""
 echo "============================================================"
-echo "  MCP ENDPOINT: $URL/mcp"
+echo "  NGROK TUNNEL: $URL/mcp"
 echo "============================================================"
 echo ""
-echo "ChatGPT setup:"
-echo "  1. chatgpt.com -> Settings -> Connectors -> Create"
-echo "  2. Server URL: $URL/mcp"
-echo "  3. Transport: HTTP  |  Authentication: None"
-echo "  4. Save, then ask: 'show me the color coral'"
+
+NGROK_HOST=$(echo "$URL" | sed 's|https://||')
+
+if command -v terraform &>/dev/null && [ -f terraform/terraform.tfstate ]; then
+  APIM_URL=$(terraform -chdir=terraform output -raw mcp_endpoint 2>/dev/null) || true
+  if [ -n "$APIM_URL" ]; then
+    echo "============================================================"
+    echo "  APIM ENDPOINT (stable): $APIM_URL"
+    echo "============================================================"
+    echo ""
+    echo "ChatGPT setup:"
+    echo "  1. chatgpt.com -> Settings -> Connectors -> Create"
+    echo "  2. Server URL: $APIM_URL"
+    echo "  3. Transport: HTTP  |  Authentication: None"
+    echo "  4. Save, then ask: 'show me the color coral'"
+    echo ""
+    echo "Update APIM backend to this tunnel (run when ngrok URL changes):"
+    echo "  terraform -chdir=terraform apply -var=\"ngrok_url=$NGROK_HOST\""
+  else
+    echo "ChatGPT setup (direct ngrok — run 'terraform apply' to set up APIM):"
+    echo "  Server URL: $URL/mcp"
+    echo ""
+    echo "Provision APIM:"
+    echo "  terraform -chdir=terraform apply \\"
+    echo "    -var=\"ngrok_url=$NGROK_HOST\" \\"
+    echo "    -var=\"publisher_email=<your-email>\""
+  fi
+else
+  echo "ChatGPT setup (direct ngrok — install Terraform and apply to set up APIM):"
+  echo "  Server URL: $URL/mcp"
+  echo ""
+  echo "Provision APIM:"
+  echo "  terraform -chdir=terraform apply \\"
+  echo "    -var=\"ngrok_url=$NGROK_HOST\" \\"
+  echo "    -var=\"publisher_email=<your-email>\""
+fi
+
 echo ""
 echo "To stop: docker compose down"
 echo "Logs:    docker compose logs -f"

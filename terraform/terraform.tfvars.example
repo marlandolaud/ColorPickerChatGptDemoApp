@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored and will never be committed.
+
+ngrok_url       = "abc-123.ngrok-free.app"  # no https:// prefix
+publisher_email = "you@example.com"
+apim_name       = "apim-mcp-poc"            # must be globally unique in Azure
