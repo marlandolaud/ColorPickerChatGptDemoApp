@@ -1,7 +1,18 @@
-FROM mcr.microsoft.com/azure-cli:latest
+FROM ubuntu:22.04
 
 ARG TERRAFORM_VERSION=1.9.8
-RUN apt-get update && apt-get install -y --no-install-recommends unzip \
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates gnupg unzip \
+    && curl -sLS https://packages.microsoft.com/keys/microsoft.asc \
+       | gpg --dearmor \
+       | tee /usr/share/keyrings/microsoft.gpg > /dev/null \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] \
+       https://packages.microsoft.com/repos/azure-cli/ jammy main" \
+       > /etc/apt/sources.list.d/azure-cli.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends azure-cli \
     && curl -fsSL "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" -o /tmp/tf.zip \
     && unzip /tmp/tf.zip -d /usr/local/bin/ \
     && rm /tmp/tf.zip \
