@@ -1,0 +1,9 @@
+FROM mcr.microsoft.com/azure-cli:latest
+
+ARG TERRAFORM_VERSION=1.9.8
+RUN apk add --no-cache unzip \
+    && curl -fsSL "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" -o /tmp/tf.zip \
+    && unzip /tmp/tf.zip -d /usr/local/bin/ \
+    && rm /tmp/tf.zip
+
+WORKDIR /workspace

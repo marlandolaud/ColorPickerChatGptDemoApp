@@ -31,8 +31,10 @@ echo ""
 
 NGROK_HOST=$(echo "$URL" | sed 's|https://||')
 
-if command -v terraform &>/dev/null && [ -f terraform/terraform.tfstate ]; then
-  APIM_URL=$(terraform -chdir=terraform output -raw mcp_endpoint 2>/dev/null) || true
+TF_RUN="docker compose run --rm terraform terraform"
+
+if [ -f terraform/terraform.tfstate ]; then
+  APIM_URL=$($TF_RUN output -raw mcp_endpoint 2>/dev/null) || true
   if [ -n "$APIM_URL" ]; then
     echo "============================================================"
     echo "  APIM ENDPOINT (stable): $APIM_URL"
@@ -45,22 +47,25 @@ if command -v terraform &>/dev/null && [ -f terraform/terraform.tfstate ]; then
     echo "  4. Save, then ask: 'show me the color coral'"
     echo ""
     echo "Update APIM backend to this tunnel (run when ngrok URL changes):"
-    echo "  terraform -chdir=terraform apply -var=\"ngrok_url=$NGROK_HOST\""
+    echo "  $TF_RUN apply -var=\"ngrok_url=$NGROK_HOST\""
   else
-    echo "ChatGPT setup (direct ngrok — run 'terraform apply' to set up APIM):"
+    echo "ChatGPT setup (direct ngrok — provision APIM to get a stable URL):"
     echo "  Server URL: $URL/mcp"
     echo ""
     echo "Provision APIM:"
-    echo "  terraform -chdir=terraform apply \\"
+    echo "  $TF_RUN apply \\"
     echo "    -var=\"ngrok_url=$NGROK_HOST\" \\"
     echo "    -var=\"publisher_email=<your-email>\""
   fi
 else
-  echo "ChatGPT setup (direct ngrok — install Terraform and apply to set up APIM):"
+  echo "ChatGPT setup (direct ngrok — provision APIM to get a stable URL):"
   echo "  Server URL: $URL/mcp"
   echo ""
-  echo "Provision APIM:"
-  echo "  terraform -chdir=terraform apply \\"
+  echo "One-time APIM setup:"
+  echo "  docker compose build terraform"
+  echo "  docker compose run --rm terraform az login --use-device-code"
+  echo "  docker compose run --rm terraform terraform init"
+  echo "  $TF_RUN apply \\"
   echo "    -var=\"ngrok_url=$NGROK_HOST\" \\"
   echo "    -var=\"publisher_email=<your-email>\""
 fi

@@ -39,6 +39,16 @@ services:
       - nginx
     restart: unless-stopped
 
+  terraform:
+    build:
+      context: .
+      dockerfile: Dockerfile.terraform
+    volumes:
+      - ./terraform:/workspace
+      - ${HOME}/.azure:/root/.azure
+    profiles:
+      - tools
+
 networks:
   mcp-net:
     driver: bridge

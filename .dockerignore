@@ -5,3 +5,5 @@ obj/
 *.md
 start.sh
 .dockerignore
+Dockerfile.terraform
+terraform/
