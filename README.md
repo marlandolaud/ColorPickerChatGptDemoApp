@@ -125,6 +125,25 @@ docker compose down           # stop and remove containers
 
 The `show_color` tool fires and a color card appears inline in the chat.
 
+## Teardown
+
+### Stop the local stack
+
+```bash
+docker compose down
+```
+
+### Destroy Azure resources (stops all billing)
+
+```bash
+docker compose run --rm terraform terraform destroy \
+  -var="ngrok_url=<your-ngrok-host>" \
+  -var="publisher_email=<your-email>" \
+  -auto-approve
+```
+
+This removes the APIM instance, API, and resource group. The Terraform config remains in the repo so you can re-provision at any time with `terraform apply`.
+
 ## Trying different colors
 
 Any CSS color name or hex value works:
