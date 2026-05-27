@@ -19,19 +19,31 @@ resource "azurerm_api_management_api" "mcp" {
   api_management_name = azurerm_api_management.mcp.name
   revision            = "1"
   display_name        = "MCP API"
-  path                = ""
-  protocols           = ["https"]
-  service_url         = "https://${var.ngrok_url}"
+  path                  = ""
+  protocols             = ["https"]
+  service_url           = "https://${var.ngrok_url}"
+  subscription_required = false
 }
 
-# Catch-all operation: handles POST /mcp (tool calls) and GET /mcp/* (UI resources)
-resource "azurerm_api_management_api_operation" "catchall" {
-  operation_id        = "catchall"
+# POST catch-all: MCP tool calls and resource reads
+resource "azurerm_api_management_api_operation" "catchall_post" {
+  operation_id        = "catchall-post"
   api_name            = azurerm_api_management_api.mcp.name
   api_management_name = azurerm_api_management.mcp.name
   resource_group_name = azurerm_resource_group.mcp.name
-  display_name        = "Catch-all"
+  display_name        = "Catch-all POST"
   method              = "POST"
+  url_template        = "/*"
+}
+
+# GET catch-all: iframe UI resource HTML
+resource "azurerm_api_management_api_operation" "catchall_get" {
+  operation_id        = "catchall-get"
+  api_name            = azurerm_api_management_api.mcp.name
+  api_management_name = azurerm_api_management.mcp.name
+  resource_group_name = azurerm_resource_group.mcp.name
+  display_name        = "Catch-all GET"
+  method              = "GET"
   url_template        = "/*"
 }
 
