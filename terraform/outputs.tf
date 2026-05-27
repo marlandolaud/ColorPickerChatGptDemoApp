@@ -40,6 +40,6 @@ output "chatgpt_client_secret" {
 }
 
 output "oauth_scope" {
-  value       = "api://mcp-color-picker/mcp.access"
+  value       = "api://${data.azurerm_client_config.current.tenant_id}/mcp-color-picker/mcp.access"
   description = "OAuth scope — paste into ChatGPT connector"
 }

@@ -5,9 +5,11 @@ resource "random_uuid" "mcp_scope_id" {}
 # App registration: MCP API (resource server — the .NET app validates tokens against this)
 resource "azuread_application" "mcp_api" {
   display_name    = "MCP Color Picker API"
-  identifier_uris = ["api://mcp-color-picker"]
+  identifier_uris = ["api://${data.azurerm_client_config.current.tenant_id}/mcp-color-picker"]
 
   api {
+    requested_access_token_version = 2
+
     oauth2_permission_scope {
       admin_consent_description  = "Access the MCP Color Picker API"
       admin_consent_display_name = "Access MCP API"
@@ -28,6 +30,10 @@ resource "azuread_service_principal" "mcp_api" {
 # App registration: ChatGPT client
 resource "azuread_application" "chatgpt_client" {
   display_name = "ChatGPT MCP Client"
+
+  web {
+    redirect_uris = ["${azurerm_api_management.mcp.gateway_url}/oauth/callback"]
+  }
 
   required_resource_access {
     resource_app_id = azuread_application.mcp_api.client_id
@@ -50,8 +56,8 @@ resource "azuread_application_password" "chatgpt_client" {
 
 # Pre-grant admin consent — avoids consent prompt when ChatGPT requests the token
 resource "azuread_service_principal_delegated_permission_grant" "chatgpt_to_mcp" {
-  service_principal_object_id          = azuread_service_principal.chatgpt_client.id
-  resource_service_principal_object_id = azuread_service_principal.mcp_api.id
+  service_principal_object_id          = azuread_service_principal.chatgpt_client.object_id
+  resource_service_principal_object_id = azuread_service_principal.mcp_api.object_id
   claim_values                         = ["mcp.access"]
 }
 

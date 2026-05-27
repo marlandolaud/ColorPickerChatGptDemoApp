@@ -6,6 +6,9 @@ services:
       AZURE_TENANT_ID: ${AZURE_TENANT_ID}
       MCP_API_CLIENT_ID: ${MCP_API_CLIENT_ID}
       MCP_PUBLIC_URL: ${MCP_PUBLIC_URL}
+      CHATGPT_CLIENT_ID: ${CHATGPT_CLIENT_ID}
+      CHATGPT_CLIENT_SECRET: ${CHATGPT_CLIENT_SECRET}
+      OAUTH_PROXY_SECRET: ${OAUTH_PROXY_SECRET}
     networks:
       - mcp-net
     restart: unless-stopped
@@ -17,6 +20,9 @@ services:
       AZURE_TENANT_ID: ${AZURE_TENANT_ID}
       MCP_API_CLIENT_ID: ${MCP_API_CLIENT_ID}
       MCP_PUBLIC_URL: ${MCP_PUBLIC_URL}
+      CHATGPT_CLIENT_ID: ${CHATGPT_CLIENT_ID}
+      CHATGPT_CLIENT_SECRET: ${CHATGPT_CLIENT_SECRET}
+      OAUTH_PROXY_SECRET: ${OAUTH_PROXY_SECRET}
     networks:
       - mcp-net
     restart: unless-stopped

@@ -1,29 +1,42 @@
-# Color Picker MCP App
+# Color Picker MCP App — APIM + CIMD OAuth
 
-A .NET 10 MCP server that lets ChatGPT display a color card inline in the chat. Built with the [MCP Apps](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/) pattern.
+A .NET 10 MCP server that lets ChatGPT display a color card inline in the chat, secured with **Azure Entra ID OAuth 2.0** using the **CIMD** (Client ID Metadata Document) flow for zero-config connector registration.
 
-![Color card rendered inline in ChatGPT](images/demo.png)
+![Color card rendered inline in ChatGPT with OAuth](images/demo-cimd.png)
 
 ## How it works
 
-1. You ask ChatGPT: _"show me the color coral"_
-2. ChatGPT calls the `show_color` MCP tool via a stable Azure API Management endpoint
-3. APIM proxies the request through an ngrok tunnel to the local MCP servers
-4. The tool returns `structuredContent: { "color": "coral" }` and declares a UI resource
-5. ChatGPT fetches the HTML card and renders it in a sandboxed iframe inline in the chat
-6. The card shows a colored swatch and label; the iframe completes the MCP Apps handshake (`ui/initialize` → `ui/notifications/initialized`) to receive the tool's structured output
+1. You ask ChatGPT: _"show me the color red"_
+2. ChatGPT discovers the MCP server's OAuth requirements via RFC 9728 (`/.well-known/oauth-protected-resource`)
+3. ChatGPT reads the server's AS metadata (`/.well-known/oauth-authorization-server`) and sees `client_id_metadata_document_supported: true` — **CIMD** is enabled
+4. ChatGPT registers via CIMD: it uses its own metadata URL as `client_id` and receives pre-configured credentials from the `/register` endpoint
+5. ChatGPT redirects the user to Azure Entra ID for consent; our OAuth proxy (`/oauth/authorize` → `/oauth/callback` → `/oauth/token`) translates the CIMD flow to the pre-registered Azure AD app, keeping the `client_secret` server-side
+6. ChatGPT attaches the resulting JWT Bearer token to each MCP request
+7. The MCP server validates the token (issuer, audience, signature) and calls the `show_color` tool
+8. The tool returns `structuredContent: { "color": "red" }` and declares a UI resource
+9. ChatGPT fetches the HTML card and renders it in a sandboxed iframe
 
 ```
 ChatGPT
-  │  POST https://<apim-name>.azure-api.net/mcp
+  │  1. Discovers CIMD via /.well-known/oauth-protected-resource
+  │  2. Registers at /register → gets client_id + client_secret
+  │  3. GET /oauth/authorize  (proxy: redirects to Azure Entra ID)
   ▼
-Azure APIM  (Consumption tier, passthrough)
-  │  forwards to https://<ngrok-host>/mcp
+Azure Entra ID  (issues signed JWT)
+  │
+  │  4. POST /oauth/callback  (proxy: form_post mode; re-signs code)
+  │  5. POST /oauth/token     (proxy: validates PKCE, exchanges with Azure AD)
   ▼
+ChatGPT
+  │  6. POST https://<apim>.azure-api.net/mcp
+  │     Authorization: Bearer <JWT>
+  ▼
+Azure APIM  (Consumption tier, passthrough — no auth policy)
+  │
 ngrok tunnel
   ▼
 nginx (load balancer)
-  ├─► mcp-server-1:5000
+  ├─► mcp-server-1:5000  (.NET — validates JWT, handles MCP)
   └─► mcp-server-2:5000
 ```
 
@@ -32,7 +45,7 @@ nginx (load balancer)
 - [Docker](https://docs.docker.com/get-docker/) with Compose
 - A free [ngrok](https://ngrok.com) account and authtoken
 - An [Azure](https://azure.microsoft.com/free) account with an active subscription
-- A ChatGPT account — no Plus/Pro required; enable [Developer Mode](https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt-beta) to access Connectors
+- A ChatGPT account — enable [Developer Mode](https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt-beta) to access Connectors
 
 ## One-time setup
 
@@ -40,8 +53,7 @@ nginx (load balancer)
 
 ```bash
 cp .env.example .env
-# Edit .env and set NGROK_AUTHTOKEN=your_token_here
-# Get your token at: https://dashboard.ngrok.com/get-started/your-authtoken
+# Edit .env — set NGROK_AUTHTOKEN from https://dashboard.ngrok.com/get-started/your-authtoken
 ```
 
 ### 2. Build the Terraform toolchain container
@@ -60,16 +72,16 @@ docker compose run --rm terraform az login --use-device-code
 
 Open the printed URL in a browser, enter the code, and sign in.
 
-### 4. Start the MCP stack and get the ngrok URL
+### 4. Start the MCP stack and note the ngrok URL
 
 ```bash
 chmod +x start.sh
 ./start.sh
 ```
 
-Note the ngrok hostname printed (e.g. `abc-123.ngrok-free.app`) — you'll need it in the next step.
+Note the ngrok hostname printed (e.g. `abc-123.ngrok-free.app`) — needed in the next step.
 
-### 5. Provision Azure APIM
+### 5. Provision Azure resources
 
 ```bash
 docker compose run --rm terraform terraform init
@@ -80,14 +92,35 @@ docker compose run --rm terraform terraform apply \
   -auto-approve
 ```
 
-Replace `<your-ngrok-host>` with just the hostname — no `https://` prefix or `/mcp` suffix.
+Replace `<your-ngrok-host>` with just the hostname (no `https://` prefix).
 
-> First-time APIM provisioning takes **5–15 minutes**. Subsequent applies (e.g. to update the ngrok URL) complete in seconds.
+> First-time APIM provisioning takes **5–15 minutes**. This also creates two Azure Entra ID app registrations and pre-grants admin consent.
 
-The stable MCP endpoint is printed at the end:
+### 6. Set environment variables from Terraform output
+
+```bash
+# Print all outputs
+docker compose run --rm terraform terraform output
+
+# Retrieve the client secret (sensitive)
+docker compose run --rm terraform terraform output -raw chatgpt_client_secret
+```
+
+Edit `.env` and set:
 
 ```
-mcp_endpoint = "https://apim-mcp-poc.azure-api.net/mcp"
+AZURE_TENANT_ID=        # from terraform output tenant_id
+MCP_API_CLIENT_ID=      # from terraform output mcp_api_client_id
+MCP_PUBLIC_URL=         # from terraform output apim_gateway_url  (no trailing slash)
+CHATGPT_CLIENT_ID=      # from terraform output chatgpt_client_id
+CHATGPT_CLIENT_SECRET=  # from terraform output -raw chatgpt_client_secret
+OAUTH_PROXY_SECRET=     # generate: openssl rand -base64 32
+```
+
+### 7. Restart the stack with the new env vars
+
+```bash
+docker compose up --build -d
 ```
 
 ## Day-to-day usage
@@ -96,7 +129,7 @@ mcp_endpoint = "https://apim-mcp-poc.azure-api.net/mcp"
 ./start.sh
 ```
 
-If the ngrok URL has changed since the last run, update APIM with the command printed by `start.sh`:
+If the ngrok URL has changed since the last run, update APIM:
 
 ```bash
 docker compose run --rm terraform terraform apply \
@@ -119,11 +152,11 @@ docker compose down           # stop and remove containers
 1. Go to [chatgpt.com](https://chatgpt.com) → **Settings** → **Connectors** → **Create**
 2. **Server URL**: `https://<apim-name>.azure-api.net/mcp` (from `terraform output mcp_endpoint`)
 3. **Transport**: HTTP
-4. **Authentication**: None
-5. Click **Save**
-6. Start a new chat and type: _"show me the color blue"_
+4. **Authentication**: OAuth — select **CIMD** when prompted
+5. Click **Connect** and complete the Azure sign-in
+6. Start a new chat and type: _"show me the color red"_
 
-The `show_color` tool fires and a color card appears inline in the chat.
+The `show_color` tool fires, authenticates via the Entra ID JWT, and a color card appears inline.
 
 ## Teardown
 
@@ -133,37 +166,37 @@ The `show_color` tool fires and a color card appears inline in the chat.
 docker compose down
 ```
 
-### Destroy Azure resources (stops all billing)
+### Destroy all Azure resources (stops all billing)
 
 ```bash
 docker compose run --rm terraform terraform destroy \
-  -var="ngrok_url=<your-ngrok-host>" \
+  -var="ngrok_url=placeholder" \
   -var="publisher_email=<your-email>" \
   -auto-approve
 ```
 
-This removes the APIM instance, API, and resource group. The Terraform config remains in the repo so you can re-provision at any time with `terraform apply`.
+This removes the APIM instance, API, resource group, and all Entra ID app registrations. The Terraform config stays in the repo for re-provisioning.
 
 ## Trying different colors
 
 Any CSS color name or hex value works:
 
-- `"show me the color tomato"`
-- `"display coral"`
-- `"what does rebeccapurple look like"`
-- `"show #ff6600"`
+- _"show me the color tomato"_
+- _"display coral"_
+- _"what does rebeccapurple look like"_
+- _"show #ff6600"_
 
 ## Project structure
 
 | File/Directory | Purpose |
 |---|---|
-| `Program.cs` | ASP.NET Core host with MCP server, stateless HTTP transport, and request logging |
+| `Program.cs` | ASP.NET Core host: MCP server, JWT Bearer auth, CIMD well-known endpoints, OAuth proxy |
 | `ColorTool.cs` | `show_color` MCP tool — returns `structuredContent` and declares the UI resource |
 | `ColorCardResource.cs` | MCP resource at `ui://color-card` serving the HTML widget |
 | `ColorCardHtml.cs` | Inline HTML/JS card — renders the swatch and implements the MCP Apps iframe handshake |
 | `Dockerfile` | Multi-stage build: .NET 10 SDK → ASP.NET 10 runtime |
 | `Dockerfile.terraform` | Toolchain image: Azure CLI + Terraform (no local install required) |
-| `docker-compose.yml` | MCP servers, nginx load balancer, ngrok tunnel, and terraform toolchain |
+| `docker-compose.yml` | MCP servers, nginx load balancer, ngrok tunnel, terraform toolchain |
 | `nginx.conf` | Round-robin load balancer across two MCP server instances |
 | `start.sh` | Starts containers, waits for ngrok tunnel, prints endpoints and APIM update command |
-| `terraform/` | Azure APIM infrastructure — resource group, APIM instance, API, passthrough policy |
+| `terraform/` | Azure infrastructure: APIM, Entra ID app registrations, admin consent grant |
