@@ -186,6 +186,44 @@ Any CSS color name or hex value works:
 - _"what does rebeccapurple look like"_
 - _"show #ff6600"_
 
+## Reference links
+
+### ChatGPT / MCP
+| Resource | URL |
+|---|---|
+| MCP Apps — blog post introducing the pattern | https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/ |
+| MCP specification | https://modelcontextprotocol.io/specification |
+| ChatGPT Developer Mode & MCP Apps (enable Connectors) | https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt-beta |
+| OpenAI Apps SDK — Authentication (CIMD docs) | https://developers.openai.com/apps-sdk/build/auth |
+| Community thread: "CIMD is unavailable" fix | https://community.openai.com/t/cimd-is-unavailable-because-the-server-did-not-advertise-cimd-support/1378920 |
+
+### Azure
+| Resource | URL |
+|---|---|
+| Azure free account | https://azure.microsoft.com/free |
+| Azure API Management — overview | https://learn.microsoft.com/en-us/azure/api-management/api-management-key-concepts |
+| Azure Entra ID — register an application | https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app |
+| Azure AD OAuth 2.0 authorization code flow | https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow |
+| Azure AD app identifier URI policy (`InvalidUniqueTenantIdentifier`) | https://aka.ms/identifier-uri-formatting-error |
+
+### OAuth 2.0 standards
+| RFC | Description |
+|---|---|
+| [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728) | OAuth 2.0 Protected Resource Metadata (`/.well-known/oauth-protected-resource`) |
+| [RFC 8414](https://datatracker.ietf.org/doc/html/rfc8414) | OAuth 2.0 Authorization Server Metadata (`/.well-known/oauth-authorization-server`) |
+| [RFC 9700](https://datatracker.ietf.org/doc/html/rfc9700) | OAuth 2.0 Client ID Metadata Document (CIMD — `client_id` as a URL) |
+| [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636) | Proof Key for Code Exchange (PKCE) |
+
+### Toolchain
+| Tool | URL |
+|---|---|
+| Docker | https://docs.docker.com/get-docker/ |
+| ngrok — get authtoken | https://dashboard.ngrok.com/get-started/your-authtoken |
+| Terraform AzureRM provider | https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs |
+| Terraform AzureAD provider | https://registry.terraform.io/providers/hashicorp/azuread/latest/docs |
+
+---
+
 ## Project structure
 
 | File/Directory | Purpose |
