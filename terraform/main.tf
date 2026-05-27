@@ -1,3 +1,60 @@
+data "azurerm_client_config" "current" {}
+
+resource "random_uuid" "mcp_scope_id" {}
+
+# App registration: MCP API (resource server — the .NET app validates tokens against this)
+resource "azuread_application" "mcp_api" {
+  display_name    = "MCP Color Picker API"
+  identifier_uris = ["api://mcp-color-picker"]
+
+  api {
+    oauth2_permission_scope {
+      admin_consent_description  = "Access the MCP Color Picker API"
+      admin_consent_display_name = "Access MCP API"
+      enabled                    = true
+      id                         = random_uuid.mcp_scope_id.result
+      type                       = "User"
+      user_consent_description   = "Access the MCP Color Picker API"
+      user_consent_display_name  = "Access MCP API"
+      value                      = "mcp.access"
+    }
+  }
+}
+
+resource "azuread_service_principal" "mcp_api" {
+  client_id = azuread_application.mcp_api.client_id
+}
+
+# App registration: ChatGPT client
+resource "azuread_application" "chatgpt_client" {
+  display_name = "ChatGPT MCP Client"
+
+  required_resource_access {
+    resource_app_id = azuread_application.mcp_api.client_id
+    resource_access {
+      id   = random_uuid.mcp_scope_id.result
+      type = "Scope"
+    }
+  }
+}
+
+resource "azuread_service_principal" "chatgpt_client" {
+  client_id = azuread_application.chatgpt_client.client_id
+}
+
+resource "azuread_application_password" "chatgpt_client" {
+  application_id = azuread_application.chatgpt_client.id
+  display_name   = "mcp-poc-secret"
+  end_date       = "2027-01-01T00:00:00Z"
+}
+
+# Pre-grant admin consent — avoids consent prompt when ChatGPT requests the token
+resource "azuread_service_principal_delegated_permission_grant" "chatgpt_to_mcp" {
+  service_principal_object_id          = azuread_service_principal.chatgpt_client.id
+  resource_service_principal_object_id = azuread_service_principal.mcp_api.id
+  claim_values                         = ["mcp.access"]
+}
+
 resource "azurerm_resource_group" "mcp" {
   name     = var.resource_group_name
   location = var.location

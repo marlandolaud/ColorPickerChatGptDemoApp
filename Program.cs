@@ -1,4 +1,5 @@
 using ColorPickerApp;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpLogging;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,10 +19,36 @@ builder.Services
     .WithToolsFromAssembly()
     .WithResourcesFromAssembly();
 
+var tenantId     = builder.Configuration["AZURE_TENANT_ID"]
+    ?? throw new InvalidOperationException("AZURE_TENANT_ID is required");
+var audience     = builder.Configuration["MCP_API_CLIENT_ID"]
+    ?? throw new InvalidOperationException("MCP_API_CLIENT_ID is required");
+var mcpPublicUrl = builder.Configuration["MCP_PUBLIC_URL"]
+    ?? throw new InvalidOperationException("MCP_PUBLIC_URL is required");
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = $"https://login.microsoftonline.com/{tenantId}/v2.0";
+        options.Audience  = audience;
+        options.TokenValidationParameters.ValidateIssuer = true;
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = ctx =>
+            {
+                ctx.Response.Headers.WWWAuthenticate =
+                    $"Bearer resource_metadata=\"{mcpPublicUrl}/.well-known/oauth-protected-resource\"";
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 app.UseHttpLogging();
 
-// Log every request/response at a glance
 app.Use(async (ctx, next) =>
 {
     var log = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
@@ -44,5 +71,17 @@ app.Use(async (ctx, next) =>
     await next(ctx);
 });
 
-app.MapMcp("/mcp");
+app.UseAuthentication();
+app.UseAuthorization();
+
+// RFC 9728 — auto-discovery so ChatGPT knows where to get tokens (CIMD flow)
+app.MapGet("/.well-known/oauth-protected-resource", () => Results.Json(new
+{
+    resource                 = mcpPublicUrl,
+    authorization_servers    = new[] { $"https://login.microsoftonline.com/{tenantId}/v2.0" },
+    scopes_supported         = new[] { "mcp.access" },
+    bearer_methods_supported = new[] { "header" }
+}));
+
+app.MapMcp("/mcp").RequireAuthorization();
 app.Run();
